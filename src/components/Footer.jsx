@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { site } from '../config'
 import Logo from './Logo'
 
@@ -47,22 +48,27 @@ export default function Footer() {
           <h4 className="text-sm font-semibold uppercase tracking-wide text-white/50">Explore</h4>
           <ul className="mt-4 space-y-3 text-sm text-white/85">
             <li>
-              <a href="#about" className="transition hover:text-white">
+              <a href="/#about" className="transition hover:text-white">
                 About
               </a>
             </li>
             <li>
-              <a href="#services" className="transition hover:text-white">
+              <a href="/#services" className="transition hover:text-white">
                 What We Do
               </a>
             </li>
             <li>
-              <a href="#trust" className="transition hover:text-white">
+              <Link to="/digital-products" className="transition hover:text-white">
+                Digital Products
+              </Link>
+            </li>
+            <li>
+              <a href="/#trust" className="transition hover:text-white">
                 How We Help
               </a>
             </li>
             <li>
-              <a href="#contact" className="transition hover:text-white">
+              <a href="/#contact" className="transition hover:text-white">
                 Talk To Us
               </a>
             </li>

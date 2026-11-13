@@ -1,6 +1,37 @@
 import { useEffect, useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import Logo from './Logo'
 import { navLinks } from '../data'
+
+function NavItem({ link, className, onClick }) {
+  if (link.external) {
+    return (
+      <a
+        href={link.href}
+        className={className}
+        onClick={onClick}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {link.label}
+      </a>
+    )
+  }
+
+  if (link.href.startsWith('/#')) {
+    return (
+      <a href={link.href} className={className} onClick={onClick}>
+        {link.label}
+      </a>
+    )
+  }
+
+  return (
+    <NavLink to={link.href} className={className} onClick={onClick}>
+      {link.label}
+    </NavLink>
+  )
+}
 
 export default function Header() {
   const [open, setOpen] = useState(false)
@@ -33,22 +64,17 @@ export default function Header() {
           <nav className="hidden items-center gap-7 lg:flex">
             {navLinks.map((link) =>
               link.cta ? (
-                <a
+                <NavItem
                   key={link.label}
-                  href={link.href}
+                  link={link}
                   className="btn-primary !min-h-0 !rounded-xl !px-4 !py-2.5 text-sm"
-                  {...(link.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-                >
-                  {link.label}
-                </a>
+                />
               ) : (
-                <a
+                <NavItem
                   key={link.label}
-                  href={link.href}
+                  link={link}
                   className="nav-link text-[0.95rem] font-semibold text-ink"
-                >
-                  {link.label}
-                </a>
+                />
               ),
             )}
           </nav>
@@ -86,19 +112,16 @@ export default function Header() {
           <div className="glass absolute inset-0" />
           <nav className="relative container-x flex h-full flex-col gap-1.5 py-5 safe-bottom">
             {navLinks.map((link) => (
-              <a
+              <NavItem
                 key={link.label}
-                href={link.href}
+                link={link}
                 className={`rounded-xl px-4 py-3.5 text-base font-semibold transition ${
                   link.cta
                     ? 'btn-primary mt-auto text-center'
                     : 'glass-soft text-ink active:scale-[0.99]'
                 }`}
                 onClick={() => setOpen(false)}
-                {...(link.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-              >
-                {link.label}
-              </a>
+              />
             ))}
           </nav>
         </div>

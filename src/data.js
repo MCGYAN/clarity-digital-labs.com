@@ -1,9 +1,10 @@
 import { site } from './config'
 
 export const navLinks = [
-  { label: 'About', href: '#about' },
-  { label: 'What We Do', href: '#services' },
-  { label: 'How We Help', href: '#trust' },
+  { label: 'About', href: '/#about' },
+  { label: 'What We Do', href: '/#services' },
+  { label: 'Digital Products', href: '/digital-products' },
+  { label: 'How We Help', href: '/#trust' },
   { label: 'Talk To Us', href: site.whatsappUrl, cta: true, external: true },
 ]
 
