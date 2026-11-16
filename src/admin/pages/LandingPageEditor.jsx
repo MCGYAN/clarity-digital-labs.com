@@ -92,6 +92,34 @@ export default function LandingPageEditor() {
     })
   }
 
+  function updateFaq(index, field, value) {
+    setForm((prev) => {
+      const list = [...(prev.content.faq || [])]
+      list[index] = { ...list[index], [field]: value }
+      return { ...prev, content: { ...prev.content, faq: list } }
+    })
+  }
+
+  function addFaq() {
+    setForm((prev) => ({
+      ...prev,
+      content: {
+        ...prev.content,
+        faq: [...(prev.content.faq || []), { q: 'New question?', a: 'Add your answer here.' }],
+      },
+    }))
+  }
+
+  function removeFaq(index) {
+    setForm((prev) => ({
+      ...prev,
+      content: {
+        ...prev.content,
+        faq: (prev.content.faq || []).filter((_, i) => i !== index),
+      },
+    }))
+  }
+
   async function save(status) {
     setSaving(true)
     setError('')
@@ -243,6 +271,37 @@ export default function LandingPageEditor() {
                 <Field key={`offer-${index}`} label={`Offer point ${index + 1}`}>
                   <TextInput value={point} onChange={(e) => updateList('offerPoints', index, e.target.value)} />
                 </Field>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-display text-base font-semibold text-deep">FAQ</h2>
+              <SecondaryButton type="button" onClick={addFaq}>
+                Add FAQ
+              </SecondaryButton>
+            </div>
+            <div className="mt-4 grid gap-4">
+              {(form.content.faq || []).length === 0 && (
+                <p className="text-sm text-muted">No FAQ items yet. Add one to show questions on the page.</p>
+              )}
+              {(form.content.faq || []).map((item, index) => (
+                <div key={`faq-${index}`} className="rounded-2xl border border-line bg-mist/30 p-4">
+                  <Field label={`Question ${index + 1}`}>
+                    <TextInput value={item.q || ''} onChange={(e) => updateFaq(index, 'q', e.target.value)} />
+                  </Field>
+                  <div className="mt-3">
+                    <Field label="Answer">
+                      <TextArea value={item.a || ''} onChange={(e) => updateFaq(index, 'a', e.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <SecondaryButton type="button" onClick={() => removeFaq(index)}>
+                      Remove
+                    </SecondaryButton>
+                  </div>
+                </div>
               ))}
             </div>
           </Panel>
