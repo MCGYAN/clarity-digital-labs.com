@@ -3,10 +3,26 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/admin/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
+import { AdminDataProvider } from './admin/context/AdminDataContext'
 import Home from './pages/Home'
 import DigitalProducts from './pages/DigitalProducts'
 import AdminLogin from './pages/admin/AdminLogin'
-import AdminDashboard from './pages/admin/AdminDashboard'
+import Overview from './admin/pages/Overview'
+import Contacts from './admin/pages/Contacts'
+import ContactDetail from './admin/pages/ContactDetail'
+import Pipeline from './admin/pages/Pipeline'
+import Bookings from './admin/pages/Bookings'
+import LandingPages from './admin/pages/LandingPages'
+import Campaigns from './admin/pages/Campaigns'
+import EmailMarketing from './admin/pages/EmailMarketing'
+import SmsMarketing from './admin/pages/SmsMarketing'
+import MetaAudiences from './admin/pages/MetaAudiences'
+import Products from './admin/pages/Products'
+import Sales from './admin/pages/Sales'
+import Website from './admin/pages/Website'
+import Analytics from './admin/pages/Analytics'
+import Integrations from './admin/pages/Integrations'
+import Settings from './admin/pages/Settings'
 
 export default function App() {
   const location = useLocation()
@@ -24,11 +40,28 @@ export default function App() {
             path="/admin"
             element={
               <ProtectedRoute>
-                <AdminLayout />
+                <AdminDataProvider>
+                  <AdminLayout />
+                </AdminDataProvider>
               </ProtectedRoute>
             }
           >
-            <Route index element={<AdminDashboard />} />
+            <Route index element={<Overview />} />
+            <Route path="contacts" element={<Contacts />} />
+            <Route path="contacts/:id" element={<ContactDetail />} />
+            <Route path="pipeline" element={<Pipeline />} />
+            <Route path="bookings" element={<Bookings />} />
+            <Route path="landing-pages" element={<LandingPages />} />
+            <Route path="campaigns" element={<Campaigns />} />
+            <Route path="email" element={<EmailMarketing />} />
+            <Route path="sms" element={<SmsMarketing />} />
+            <Route path="meta-audiences" element={<MetaAudiences />} />
+            <Route path="products" element={<Products />} />
+            <Route path="sales" element={<Sales />} />
+            <Route path="website" element={<Website />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="integrations" element={<Integrations />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </main>
