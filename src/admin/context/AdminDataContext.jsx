@@ -282,6 +282,15 @@ export function AdminDataProvider({ children }) {
             status: page.status || 'Draft',
             visitors: 0,
             leads: 0,
+            template_key: page.templateKey || 'lead_magnet',
+            content: page.content || {},
+            cta_type: page.ctaType || 'lead_form',
+            cta_label: page.ctaLabel || 'Get started',
+            cta_url: page.ctaUrl || '',
+            has_vsl: Boolean(page.hasVsl),
+            vsl_url: page.vslUrl || '',
+            lead_magnet_url: page.leadMagnetUrl || '',
+            form_fields: page.formFields || ['fullName', 'email', 'phone'],
           })
           .select('*')
           .single()
@@ -297,6 +306,15 @@ export function AdminDataProvider({ children }) {
         if (patch.status !== undefined) payload.status = patch.status
         if (patch.visitors !== undefined) payload.visitors = patch.visitors
         if (patch.leads !== undefined) payload.leads = patch.leads
+        if (patch.templateKey !== undefined) payload.template_key = patch.templateKey
+        if (patch.content !== undefined) payload.content = patch.content
+        if (patch.ctaType !== undefined) payload.cta_type = patch.ctaType
+        if (patch.ctaLabel !== undefined) payload.cta_label = patch.ctaLabel
+        if (patch.ctaUrl !== undefined) payload.cta_url = patch.ctaUrl
+        if (patch.hasVsl !== undefined) payload.has_vsl = patch.hasVsl
+        if (patch.vslUrl !== undefined) payload.vsl_url = patch.vslUrl
+        if (patch.leadMagnetUrl !== undefined) payload.lead_magnet_url = patch.leadMagnetUrl
+        if (patch.formFields !== undefined) payload.form_fields = patch.formFields
 
         const { error: updateError } = await supabase.from('landing_pages').update(payload).eq('id', id)
         if (updateError) throw updateError
@@ -312,6 +330,15 @@ export function AdminDataProvider({ children }) {
           status: 'Draft',
           visitors: 0,
           leads: 0,
+          template_key: source.templateKey,
+          content: source.content,
+          cta_type: source.ctaType,
+          cta_label: source.ctaLabel,
+          cta_url: source.ctaUrl,
+          has_vsl: source.hasVsl,
+          vsl_url: source.vslUrl,
+          lead_magnet_url: source.leadMagnetUrl,
+          form_fields: source.formFields,
         })
         refresh()
       },

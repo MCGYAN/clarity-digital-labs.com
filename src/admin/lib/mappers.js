@@ -44,6 +44,15 @@ export function mapLandingPage(row) {
     visitors: row.visitors || 0,
     leads: row.leads || 0,
     createdAt: row.created_at?.slice(0, 10) || '',
+    templateKey: row.template_key || 'lead_magnet',
+    content: row.content || {},
+    ctaType: row.cta_type || 'lead_form',
+    ctaLabel: row.cta_label || 'Get started',
+    ctaUrl: row.cta_url || '',
+    hasVsl: Boolean(row.has_vsl),
+    vslUrl: row.vsl_url || '',
+    leadMagnetUrl: row.lead_magnet_url || '',
+    formFields: row.form_fields || ['fullName', 'email', 'phone'],
   }
 }
 

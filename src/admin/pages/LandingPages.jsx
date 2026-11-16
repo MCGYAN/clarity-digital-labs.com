@@ -1,54 +1,22 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Copy, Eye, Plus } from 'lucide-react'
 import {
   Badge,
   EmptyState,
-  Field,
-  Modal,
   PageHeader,
   Panel,
-  PrimaryButton,
   SecondaryButton,
-  Select,
-  TextInput,
   statusTone,
 } from '../components/ui'
 import DataState from '../components/DataState'
 import { useAdminData } from '../context/AdminDataContext'
 import { conversionRate } from '../data/constants'
-
-const emptyPage = {
-  name: '',
-  slug: '',
-  campaign: '',
-  status: 'Draft',
-}
+import { getTemplate } from '../data/landingPresets'
 
 export default function LandingPages() {
-  const { landingPages, addLandingPage, updateLandingPage, duplicateLandingPage, loading, error } = useAdminData()
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState(emptyPage)
+  const { landingPages, updateLandingPage, duplicateLandingPage, loading, error } = useAdminData()
   const [copied, setCopied] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
-
-  async function savePage(e) {
-    e.preventDefault()
-    setFormError('')
-    setSaving(true)
-    try {
-      await addLandingPage({
-        ...form,
-        slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
-      })
-      setForm(emptyPage)
-      setOpen(false)
-    } catch (err) {
-      setFormError(err.message || 'Could not create page')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   function copyUrl(slug) {
     const url = `${window.location.origin}/p/${slug}`
@@ -61,13 +29,14 @@ export default function LandingPages() {
     <div>
       <PageHeader
         title="Landing Pages"
-        description="Create campaign pages. Builder templates come next."
+        description="Pick a ready page type, adjust a few words, publish. No blank-page stress."
         actions={
-          <PrimaryButton onClick={() => setOpen(true)}>
-            <span className="inline-flex items-center gap-2">
-              <Plus size={16} /> New landing page
-            </span>
-          </PrimaryButton>
+          <Link
+            to="/admin/landing-pages/new"
+            className="btn-primary !min-h-10 !rounded-xl !px-4 !py-2 text-sm inline-flex items-center gap-2"
+          >
+            <Plus size={16} /> New landing page
+          </Link>
         }
       />
 
@@ -78,8 +47,12 @@ export default function LandingPages() {
         empty={
           <EmptyState
             title="No landing pages yet"
-            description="Create your first campaign page."
-            action={<PrimaryButton onClick={() => setOpen(true)}>Create page</PrimaryButton>}
+            description="Start with a free guide, book-a-call, paid offer, or VSL page."
+            action={
+              <Link to="/admin/landing-pages/new" className="btn-primary !min-h-10 !rounded-xl !px-4 !py-2 text-sm">
+                Create page
+              </Link>
+            }
           />
         }
       >
@@ -89,7 +62,7 @@ export default function LandingPages() {
               <thead className="border-b border-line bg-mist/50 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Page</th>
-                  <th className="px-4 py-3 font-semibold">Campaign</th>
+                  <th className="px-4 py-3 font-semibold">Type</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold">Visitors</th>
                   <th className="px-4 py-3 font-semibold">Leads</th>
@@ -101,10 +74,12 @@ export default function LandingPages() {
                 {landingPages.map((page) => (
                   <tr key={page.id} className="border-b border-line/70">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-deep">{page.name}</p>
-                      <p className="text-xs text-muted">/{page.slug}</p>
+                      <Link to={`/admin/landing-pages/${page.id}`} className="font-semibold text-deep hover:text-sea">
+                        {page.name}
+                      </Link>
+                      <p className="text-xs text-muted">/p/{page.slug}</p>
                     </td>
-                    <td className="px-4 py-3 text-muted">{page.campaign}</td>
+                    <td className="px-4 py-3 text-muted">{getTemplate(page.templateKey).name}</td>
                     <td className="px-4 py-3">
                       <Badge tone={statusTone(page.status)}>{page.status}</Badge>
                     </td>
@@ -113,6 +88,12 @@ export default function LandingPages() {
                     <td className="px-4 py-3 text-muted">{conversionRate(page.leads, page.visitors)}%</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1.5">
+                        <Link
+                          to={`/admin/landing-pages/${page.id}`}
+                          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-line bg-white px-4 py-2 text-sm font-semibold text-deep transition hover:border-sea/30 hover:bg-mist"
+                        >
+                          Edit
+                        </Link>
                         <SecondaryButton
                           onClick={() =>
                             updateLandingPage(page.id, {
@@ -131,14 +112,17 @@ export default function LandingPages() {
                         >
                           <Copy size={15} />
                         </button>
-                        <button
-                          type="button"
-                          className="rounded-xl border border-line px-2.5 py-2 text-deep hover:bg-mist"
-                          title="Preview"
-                          onClick={() => window.alert(`Preview placeholder for /${page.slug}`)}
-                        >
-                          <Eye size={15} />
-                        </button>
+                        {page.status === 'Published' && (
+                          <a
+                            href={`/p/${page.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-xl border border-line px-2.5 py-2 text-deep hover:bg-mist"
+                            title="Open live page"
+                          >
+                            <Eye size={15} />
+                          </a>
+                        )}
                         {copied === page.slug && <span className="text-xs font-semibold text-sea">Copied</span>}
                       </div>
                     </td>
@@ -149,39 +133,6 @@ export default function LandingPages() {
           </div>
         </Panel>
       </DataState>
-
-      <Modal open={open} onClose={() => setOpen(false)} title="Create landing page" wide>
-        <form className="grid gap-3" onSubmit={savePage}>
-          <Field label="Page name">
-            <TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </Field>
-          <Field label="URL slug">
-            <TextInput
-              placeholder="auto-from-name"
-              value={form.slug}
-              onChange={(e) => setForm({ ...form, slug: e.target.value })}
-            />
-          </Field>
-          <Field label="Campaign name">
-            <TextInput required value={form.campaign} onChange={(e) => setForm({ ...form, campaign: e.target.value })} />
-          </Field>
-          <Field label="Status">
-            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option>Draft</option>
-              <option>Published</option>
-            </Select>
-          </Field>
-          {formError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
-          <div className="flex justify-end gap-2">
-            <SecondaryButton type="button" onClick={() => setOpen(false)}>
-              Cancel
-            </SecondaryButton>
-            <PrimaryButton type="submit" disabled={saving}>
-              {saving ? 'Creating…' : 'Create page'}
-            </PrimaryButton>
-          </div>
-        </form>
-      </Modal>
     </div>
   )
 }
