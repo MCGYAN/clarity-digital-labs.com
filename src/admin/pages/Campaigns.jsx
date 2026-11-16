@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
-import { PageHeader, Panel, Badge, statusTone } from '../components/ui'
-import { campaignPerformance } from '../data/mock'
+import { EmptyState, PageHeader, Panel } from '../components/ui'
+import DataState from '../components/DataState'
+import { useAdminData } from '../context/AdminDataContext'
 
 export default function Campaigns() {
+  const { emailCampaigns, smsCampaigns, metaAudiences, loading, error } = useAdminData()
+  const total =
+    emailCampaigns.length + smsCampaigns.length + metaAudiences.length
+
   return (
     <div>
       <PageHeader
@@ -12,13 +17,14 @@ export default function Campaigns() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {[
-          { title: 'Email Marketing', to: '/admin/email', blurb: 'Prepare broadcasts and sequences.' },
-          { title: 'SMS Marketing', to: '/admin/sms', blurb: 'Draft reminders and SMS offers.' },
-          { title: 'Meta Audiences', to: '/admin/meta-audiences', blurb: 'Ready contacts for custom audiences.' },
+          { title: 'Email Marketing', to: '/admin/email', count: emailCampaigns.length, blurb: 'Prepare broadcasts and sequences.' },
+          { title: 'SMS Marketing', to: '/admin/sms', count: smsCampaigns.length, blurb: 'Draft reminders and SMS offers.' },
+          { title: 'Meta Audiences', to: '/admin/meta-audiences', count: metaAudiences.length, blurb: 'Ready contacts for custom audiences.' },
         ].map((card) => (
           <Panel key={card.title} className="p-5">
             <h2 className="font-display text-lg font-semibold text-deep">{card.title}</h2>
             <p className="mt-2 text-sm text-muted">{card.blurb}</p>
+            <p className="mt-3 text-xs font-semibold text-muted">{card.count} saved</p>
             <Link to={card.to} className="mt-4 inline-block text-sm font-semibold text-sea hover:underline">
               Open →
             </Link>
@@ -26,37 +32,26 @@ export default function Campaigns() {
         ))}
       </div>
 
-      <Panel className="mt-4 overflow-hidden">
-        <div className="border-b border-line px-5 py-4">
-          <h2 className="font-display text-base font-semibold text-deep">Campaign performance</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-mist/50 text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Campaign</th>
-                <th className="px-4 py-3 font-semibold">Leads</th>
-                <th className="px-4 py-3 font-semibold">Spend</th>
-                <th className="px-4 py-3 font-semibold">Conversion</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaignPerformance.map((row) => (
-                <tr key={row.name} className="border-t border-line">
-                  <td className="px-4 py-3 font-semibold text-deep">{row.name}</td>
-                  <td className="px-4 py-3 text-muted">{row.leads}</td>
-                  <td className="px-4 py-3 text-muted">{row.spend}</td>
-                  <td className="px-4 py-3 text-muted">{row.conv}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone('Published')}>Active sample</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <div className="mt-4">
+        <DataState
+          loading={loading}
+          error={error}
+          isEmpty={!loading && !error && total === 0}
+          empty={
+            <EmptyState
+              title="No campaign records yet"
+              description="Email, SMS and Meta tables are empty and ready. Providers stay disconnected until you connect them."
+            />
+          }
+        >
+          <Panel className="p-5">
+            <p className="text-sm text-muted">
+              You have {emailCampaigns.length} email, {smsCampaigns.length} SMS and {metaAudiences.length} Meta
+              audience records in Supabase.
+            </p>
+          </Panel>
+        </DataState>
+      </div>
     </div>
   )
 }

@@ -13,8 +13,9 @@ import {
   TextInput,
   statusTone,
 } from '../components/ui'
+import DataState from '../components/DataState'
 import { useAdminData } from '../context/AdminDataContext'
-import { conversionRate } from '../data/mock'
+import { conversionRate } from '../data/constants'
 
 const emptyPage = {
   name: '',
@@ -24,19 +25,29 @@ const emptyPage = {
 }
 
 export default function LandingPages() {
-  const { landingPages, addLandingPage, updateLandingPage, duplicateLandingPage } = useAdminData()
+  const { landingPages, addLandingPage, updateLandingPage, duplicateLandingPage, loading, error } = useAdminData()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyPage)
   const [copied, setCopied] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
-  function savePage(e) {
+  async function savePage(e) {
     e.preventDefault()
-    addLandingPage({
-      ...form,
-      slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
-    })
-    setForm(emptyPage)
-    setOpen(false)
+    setFormError('')
+    setSaving(true)
+    try {
+      await addLandingPage({
+        ...form,
+        slug: form.slug || form.name.toLowerCase().replace(/\s+/g, '-'),
+      })
+      setForm(emptyPage)
+      setOpen(false)
+    } catch (err) {
+      setFormError(err.message || 'Could not create page')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function copyUrl(slug) {
@@ -50,7 +61,7 @@ export default function LandingPages() {
     <div>
       <PageHeader
         title="Landing Pages"
-        description="Create campaign pages for offers, guides and consultations. Builder templates come next."
+        description="Create campaign pages. Builder templates come next."
         actions={
           <PrimaryButton onClick={() => setOpen(true)}>
             <span className="inline-flex items-center gap-2">
@@ -60,10 +71,19 @@ export default function LandingPages() {
         }
       />
 
-      <Panel className="overflow-hidden">
-        {landingPages.length === 0 ? (
-          <EmptyState title="No landing pages yet" action={<PrimaryButton onClick={() => setOpen(true)}>Create one</PrimaryButton>} />
-        ) : (
+      <DataState
+        loading={loading}
+        error={error}
+        isEmpty={!loading && !error && landingPages.length === 0}
+        empty={
+          <EmptyState
+            title="No landing pages yet"
+            description="Create your first campaign page."
+            action={<PrimaryButton onClick={() => setOpen(true)}>Create page</PrimaryButton>}
+          />
+        }
+      >
+        <Panel className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-line bg-mist/50 text-xs uppercase tracking-wide text-muted">
@@ -127,8 +147,8 @@ export default function LandingPages() {
               </tbody>
             </table>
           </div>
-        )}
-      </Panel>
+        </Panel>
+      </DataState>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Create landing page" wide>
         <form className="grid gap-3" onSubmit={savePage}>
@@ -151,15 +171,14 @@ export default function LandingPages() {
               <option>Published</option>
             </Select>
           </Field>
-          <p className="rounded-xl bg-mist px-3 py-3 text-sm text-muted">
-            Page builder blocks (headlines, forms, VSL, CTAs, booking and payment links) will plug into this
-            workflow next.
-          </p>
+          {formError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
           <div className="flex justify-end gap-2">
             <SecondaryButton type="button" onClick={() => setOpen(false)}>
               Cancel
             </SecondaryButton>
-            <PrimaryButton type="submit">Create page</PrimaryButton>
+            <PrimaryButton type="submit" disabled={saving}>
+              {saving ? 'Creating…' : 'Create page'}
+            </PrimaryButton>
           </div>
         </form>
       </Modal>

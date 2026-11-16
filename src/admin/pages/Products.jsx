@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import {
   Badge,
+  EmptyState,
   Field,
   Modal,
   PageHeader,
@@ -13,8 +14,9 @@ import {
   TextInput,
   statusTone,
 } from '../components/ui'
+import DataState from '../components/DataState'
 import { useAdminData } from '../context/AdminDataContext'
-import { formatGhs } from '../data/mock'
+import { formatGhs } from '../data/constants'
 
 const emptyProduct = {
   name: '',
@@ -25,19 +27,29 @@ const emptyProduct = {
 }
 
 export default function Products() {
-  const { products, addProduct, updateProduct } = useAdminData()
+  const { products, addProduct, updateProduct, loading, error } = useAdminData()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(emptyProduct)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
-  function saveProduct(e) {
+  async function saveProduct(e) {
     e.preventDefault()
-    addProduct({
-      ...form,
-      priceGhs: Number(form.priceGhs || 0),
-      image: '',
-    })
-    setForm(emptyProduct)
-    setOpen(false)
+    setFormError('')
+    setSaving(true)
+    try {
+      await addProduct({
+        ...form,
+        priceGhs: Number(form.priceGhs || 0),
+        image: '',
+      })
+      setForm(emptyProduct)
+      setOpen(false)
+    } catch (err) {
+      setFormError(err.message || 'Could not save product')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -54,30 +66,43 @@ export default function Products() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {products.map((product) => (
-          <Panel key={product.id} className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-deep">{product.name}</h2>
-              <Badge tone={statusTone(product.status)}>{product.status}</Badge>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{product.description}</p>
-            <p className="mt-4 font-display text-xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
-            <p className="mt-1 text-xs text-muted">{product.sales} sales</p>
-            <p className="mt-3 truncate text-xs text-muted">{product.paymentLink || 'No payment link yet'}</p>
-            <SecondaryButton
-              className="mt-4"
-              onClick={() =>
-                updateProduct(product.id, {
-                  status: product.status === 'Published' ? 'Draft' : 'Published',
-                })
-              }
-            >
-              {product.status === 'Published' ? 'Unpublish' : 'Publish'}
-            </SecondaryButton>
-          </Panel>
-        ))}
-      </div>
+      <DataState
+        loading={loading}
+        error={error}
+        isEmpty={!loading && !error && products.length === 0}
+        empty={
+          <EmptyState
+            title="No products yet"
+            description="Add your first digital product."
+            action={<PrimaryButton onClick={() => setOpen(true)}>Add product</PrimaryButton>}
+          />
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {products.map((product) => (
+            <Panel key={product.id} className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-display text-lg font-semibold text-deep">{product.name}</h2>
+                <Badge tone={statusTone(product.status)}>{product.status}</Badge>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{product.description}</p>
+              <p className="mt-4 font-display text-xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
+              <p className="mt-1 text-xs text-muted">{product.sales} sales</p>
+              <p className="mt-3 truncate text-xs text-muted">{product.paymentLink || 'No payment link yet'}</p>
+              <SecondaryButton
+                className="mt-4"
+                onClick={() =>
+                  updateProduct(product.id, {
+                    status: product.status === 'Published' ? 'Draft' : 'Published',
+                  })
+                }
+              >
+                {product.status === 'Published' ? 'Unpublish' : 'Publish'}
+              </SecondaryButton>
+            </Panel>
+          ))}
+        </div>
+      </DataState>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add digital product" wide>
         <form className="grid gap-3" onSubmit={saveProduct}>
@@ -105,12 +130,14 @@ export default function Products() {
               <option>Published</option>
             </Select>
           </Field>
-          <p className="text-sm text-muted">Image upload will connect when storage is added.</p>
+          {formError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
           <div className="flex justify-end gap-2">
             <SecondaryButton type="button" onClick={() => setOpen(false)}>
               Cancel
             </SecondaryButton>
-            <PrimaryButton type="submit">Save product</PrimaryButton>
+            <PrimaryButton type="submit" disabled={saving}>
+              {saving ? 'Saving…' : 'Save product'}
+            </PrimaryButton>
           </div>
         </form>
       </Modal>

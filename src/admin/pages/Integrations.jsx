@@ -1,5 +1,5 @@
 import { Badge, PageHeader, Panel, SecondaryButton, statusTone } from '../components/ui'
-import { integrations } from '../data/mock'
+import { INTEGRATIONS } from '../data/constants'
 
 export default function Integrations() {
   return (
@@ -9,7 +9,7 @@ export default function Integrations() {
         description="Connect providers when you are ready. Nothing is marked as sent or synced until connected."
       />
       <div className="grid gap-4 md:grid-cols-2">
-        {integrations.map((item) => (
+        {INTEGRATIONS.map((item) => (
           <Panel key={item.id} className="p-5">
             <div className="flex items-start justify-between gap-3">
               <div>

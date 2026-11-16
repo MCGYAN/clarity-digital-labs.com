@@ -15,8 +15,9 @@ import {
   TextInput,
   statusTone,
 } from '../components/ui'
+import DataState from '../components/DataState'
 import { useAdminData } from '../context/AdminDataContext'
-import { LEAD_SOURCES, LEAD_STATUSES, SERVICES } from '../data/mock'
+import { LEAD_SOURCES, LEAD_STATUSES, SERVICES } from '../data/constants'
 
 const emptyForm = {
   fullName: '',
@@ -32,7 +33,7 @@ const emptyForm = {
 }
 
 export default function Contacts() {
-  const { contacts, addContact, updateContact, deleteContact } = useAdminData()
+  const { contacts, addContact, updateContact, deleteContact, loading, error } = useAdminData()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('All')
   const [source, setSource] = useState('All')
@@ -40,6 +41,8 @@ export default function Contacts() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [confirmId, setConfirmId] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const filtered = useMemo(() => {
     return contacts.filter((c) => {
@@ -79,8 +82,10 @@ export default function Contacts() {
     setOpen(true)
   }
 
-  function saveContact(e) {
+  async function saveContact(e) {
     e.preventDefault()
+    setFormError('')
+    setSaving(true)
     const payload = {
       ...form,
       tags: form.tags
@@ -88,9 +93,15 @@ export default function Contacts() {
         .map((t) => t.trim())
         .filter(Boolean),
     }
-    if (editing) updateContact(editing, payload)
-    else addContact(payload)
-    setOpen(false)
+    try {
+      if (editing) await updateContact(editing, payload)
+      else await addContact(payload)
+      setOpen(false)
+    } catch (err) {
+      setFormError(err.message || 'Could not save contact')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -137,11 +148,12 @@ export default function Contacts() {
         </div>
       </Panel>
 
+      <DataState loading={loading} error={error}>
       <Panel className="overflow-hidden">
         {filtered.length === 0 ? (
           <EmptyState
-            title="No contacts found"
-            description="Try another search, or add your first contact."
+            title="No contacts yet"
+            description="Your CRM is empty. Add your first contact to get started."
             action={<PrimaryButton onClick={openCreate}>Add contact</PrimaryButton>}
           />
         ) : (
@@ -194,6 +206,7 @@ export default function Contacts() {
           </div>
         )}
       </Panel>
+      </DataState>
 
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit contact' : 'Add contact'} wide>
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={saveContact}>
@@ -246,24 +259,33 @@ export default function Contacts() {
             />
             Marketing consent given
           </label>
+          {formError && (
+            <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">{formError}</p>
+          )}
           <div className="flex justify-end gap-2 sm:col-span-2">
             <SecondaryButton type="button" onClick={() => setOpen(false)}>
               Cancel
             </SecondaryButton>
-            <PrimaryButton type="submit">{editing ? 'Save changes' : 'Create contact'}</PrimaryButton>
+            <PrimaryButton type="submit" disabled={saving}>
+              {saving ? 'Saving…' : editing ? 'Save changes' : 'Create contact'}
+            </PrimaryButton>
           </div>
         </form>
       </Modal>
 
       <Modal open={Boolean(confirmId)} onClose={() => setConfirmId(null)} title="Delete contact?">
-        <p className="text-sm text-muted">This removes the contact from your CRM sample data for this session.</p>
+        <p className="text-sm text-muted">This permanently deletes the contact from Supabase.</p>
         <div className="mt-5 flex justify-end gap-2">
           <SecondaryButton onClick={() => setConfirmId(null)}>Cancel</SecondaryButton>
           <PrimaryButton
             className="!bg-red-600 hover:!bg-red-700"
-            onClick={() => {
-              deleteContact(confirmId)
-              setConfirmId(null)
+            onClick={async () => {
+              try {
+                await deleteContact(confirmId)
+                setConfirmId(null)
+              } catch (err) {
+                setFormError(err.message || 'Could not delete contact')
+              }
             }}
           >
             Delete

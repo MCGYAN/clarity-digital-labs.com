@@ -1,24 +1,178 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../../lib/supabase'
 import {
-  initialBookings,
-  initialContacts,
-  initialLandingPages,
-  initialProducts,
-  initialSales,
-} from '../data/mock'
+  mapBooking,
+  mapContact,
+  mapEmailCampaign,
+  mapLandingPage,
+  mapMetaAudience,
+  mapProduct,
+  mapSale,
+  mapSmsCampaign,
+} from '../lib/mappers'
+import { monthKey, monthLabel } from '../data/constants'
 
 const AdminDataContext = createContext(null)
 
-function uid(prefix) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}`
-}
-
 export function AdminDataProvider({ children }) {
-  const [contacts, setContacts] = useState(initialContacts)
-  const [bookings, setBookings] = useState(initialBookings)
-  const [landingPages, setLandingPages] = useState(initialLandingPages)
-  const [products, setProducts] = useState(initialProducts)
-  const [sales] = useState(initialSales)
+  const [contacts, setContacts] = useState([])
+  const [bookings, setBookings] = useState([])
+  const [landingPages, setLandingPages] = useState([])
+  const [products, setProducts] = useState([])
+  const [sales, setSales] = useState([])
+  const [emailCampaigns, setEmailCampaigns] = useState([])
+  const [smsCampaigns, setSmsCampaigns] = useState([])
+  const [metaAudiences, setMetaAudiences] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
+
+  useEffect(() => {
+    let active = true
+
+    async function load() {
+      if (!supabase) {
+        setError('Supabase is not configured.')
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError('')
+
+      const [
+        contactsRes,
+        activitiesRes,
+        bookingsRes,
+        pagesRes,
+        productsRes,
+        salesRes,
+        emailRes,
+        smsRes,
+        metaRes,
+      ] = await Promise.all([
+        supabase.from('contacts').select('*').order('created_at', { ascending: false }),
+        supabase.from('contact_activities').select('*').order('occurred_at', { ascending: false }),
+        supabase.from('bookings').select('*').order('booking_date', { ascending: false }),
+        supabase.from('landing_pages').select('*').order('created_at', { ascending: false }),
+        supabase.from('products').select('*').order('created_at', { ascending: false }),
+        supabase.from('sales').select('*').order('sale_date', { ascending: false }),
+        supabase.from('email_campaigns').select('*').order('created_at', { ascending: false }),
+        supabase.from('sms_campaigns').select('*').order('created_at', { ascending: false }),
+        supabase.from('meta_audiences').select('*').order('created_at', { ascending: false }),
+      ])
+
+      if (!active) return
+
+      const firstError = [
+        contactsRes.error,
+        activitiesRes.error,
+        bookingsRes.error,
+        pagesRes.error,
+        productsRes.error,
+        salesRes.error,
+        emailRes.error,
+        smsRes.error,
+        metaRes.error,
+      ].find(Boolean)
+
+      if (firstError) {
+        setError(firstError.message)
+        setLoading(false)
+        return
+      }
+
+      const activitiesByContact = (activitiesRes.data || []).reduce((acc, row) => {
+        ;(acc[row.contact_id] ||= []).push(row)
+        return acc
+      }, {})
+
+      setContacts((contactsRes.data || []).map((row) => mapContact(row, activitiesByContact[row.id] || [])))
+      setBookings((bookingsRes.data || []).map(mapBooking))
+      setLandingPages((pagesRes.data || []).map(mapLandingPage))
+      setProducts((productsRes.data || []).map(mapProduct))
+      setSales((salesRes.data || []).map(mapSale))
+      setEmailCampaigns((emailRes.data || []).map(mapEmailCampaign))
+      setSmsCampaigns((smsRes.data || []).map(mapSmsCampaign))
+      setMetaAudiences((metaRes.data || []).map(mapMetaAudience))
+      setLoading(false)
+    }
+
+    load()
+    return () => {
+      active = false
+    }
+  }, [refreshKey])
+
+  const analytics = useMemo(() => {
+    const months = new Map()
+
+    for (const contact of contacts) {
+      const key = monthKey(contact.createdAt)
+      if (!key) continue
+      const row = months.get(key) || { month: monthLabel(key), visitors: 0, leads: 0, revenue: 0 }
+      row.leads += 1
+      months.set(key, row)
+    }
+
+    for (const page of landingPages) {
+      const key = monthKey(page.createdAt)
+      if (!key) continue
+      const row = months.get(key) || { month: monthLabel(key), visitors: 0, leads: 0, revenue: 0 }
+      row.visitors += page.visitors || 0
+      months.set(key, row)
+    }
+
+    for (const sale of sales) {
+      if (sale.status !== 'Paid') continue
+      const key = monthKey(sale.date)
+      if (!key) continue
+      const row = months.get(key) || { month: monthLabel(key), visitors: 0, leads: 0, revenue: 0 }
+      row.revenue += sale.amountGhs || 0
+      months.set(key, row)
+    }
+
+    const series = [...months.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, value]) => value)
+
+    const sourceMap = contacts.reduce((acc, contact) => {
+      const key = contact.source || 'Direct'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+
+    const totalSources = Object.values(sourceMap).reduce((sum, n) => sum + n, 0) || 1
+    const leadSources = Object.entries(sourceMap).map(([name, value]) => ({
+      name,
+      value: Math.round((value / totalSources) * 100),
+      count: value,
+    }))
+
+    const recentActivity = [
+      ...contacts.slice(0, 5).map((c) => ({
+        id: `contact-${c.id}`,
+        text: `New contact: ${c.fullName}`,
+        time: c.createdAt,
+      })),
+      ...bookings.slice(0, 5).map((b) => ({
+        id: `booking-${b.id}`,
+        text: `Booking: ${b.contactName} · ${b.type}`,
+        time: b.date,
+      })),
+      ...sales.slice(0, 5).map((s) => ({
+        id: `sale-${s.id}`,
+        text: `Sale: ${s.product} · GHS ${s.amountGhs}`,
+        time: s.date,
+      })),
+    ]
+      .sort((a, b) => String(b.time).localeCompare(String(a.time)))
+      .slice(0, 8)
+
+    return { series, leadSources, recentActivity }
+  }, [contacts, landingPages, sales, bookings])
 
   const value = useMemo(
     () => ({
@@ -27,73 +181,187 @@ export function AdminDataProvider({ children }) {
       landingPages,
       products,
       sales,
-      addContact(contact) {
-        const next = {
-          ...contact,
-          id: uid('c'),
-          createdAt: new Date().toISOString().slice(0, 10),
-          activities: [{ id: uid('a'), type: 'Note', label: 'Contact created', at: new Date().toLocaleString() }],
-        }
-        setContacts((prev) => [next, ...prev])
-        return next
+      emailCampaigns,
+      smsCampaigns,
+      metaAudiences,
+      analytics,
+      loading,
+      error,
+      refresh,
+      async addContact(contact) {
+        const { data, error: insertError } = await supabase
+          .from('contacts')
+          .insert({
+            full_name: contact.fullName,
+            email: contact.email,
+            phone: contact.phone || '',
+            company: contact.company || '',
+            source: contact.source,
+            service: contact.service,
+            status: contact.status,
+            tags: contact.tags || [],
+            marketing_consent: Boolean(contact.marketingConsent),
+            notes: contact.notes || '',
+          })
+          .select('*')
+          .single()
+
+        if (insertError) throw insertError
+
+        await supabase.from('contact_activities').insert({
+          contact_id: data.id,
+          type: 'Note',
+          label: 'Contact created',
+        })
+
+        refresh()
+        return mapContact(data, [])
       },
-      updateContact(id, patch) {
-        setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+      async updateContact(id, patch) {
+        const payload = {}
+        if (patch.fullName !== undefined) payload.full_name = patch.fullName
+        if (patch.email !== undefined) payload.email = patch.email
+        if (patch.phone !== undefined) payload.phone = patch.phone
+        if (patch.company !== undefined) payload.company = patch.company
+        if (patch.source !== undefined) payload.source = patch.source
+        if (patch.service !== undefined) payload.service = patch.service
+        if (patch.status !== undefined) payload.status = patch.status
+        if (patch.tags !== undefined) payload.tags = patch.tags
+        if (patch.marketingConsent !== undefined) payload.marketing_consent = patch.marketingConsent
+        if (patch.notes !== undefined) payload.notes = patch.notes
+        payload.updated_at = new Date().toISOString()
+
+        const { error: updateError } = await supabase.from('contacts').update(payload).eq('id', id)
+        if (updateError) throw updateError
+        refresh()
       },
-      deleteContact(id) {
-        setContacts((prev) => prev.filter((c) => c.id !== id))
+      async deleteContact(id) {
+        const { error: deleteError } = await supabase.from('contacts').delete().eq('id', id)
+        if (deleteError) throw deleteError
+        refresh()
       },
-      addBooking(booking) {
-        const next = { ...booking, id: uid('b') }
-        setBookings((prev) => [next, ...prev])
-        return next
+      async addBooking(booking) {
+        const { data, error: insertError } = await supabase
+          .from('bookings')
+          .insert({
+            contact_name: booking.contactName,
+            contact_email: booking.contactEmail || '',
+            type: booking.type,
+            booking_date: booking.date,
+            booking_time: booking.time,
+            status: booking.status,
+            notes: booking.notes || '',
+          })
+          .select('*')
+          .single()
+        if (insertError) throw insertError
+        refresh()
+        return mapBooking(data)
       },
-      updateBooking(id, patch) {
-        setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)))
+      async updateBooking(id, patch) {
+        const payload = { updated_at: new Date().toISOString() }
+        if (patch.status !== undefined) payload.status = patch.status
+        if (patch.contactName !== undefined) payload.contact_name = patch.contactName
+        if (patch.contactEmail !== undefined) payload.contact_email = patch.contactEmail
+        if (patch.type !== undefined) payload.type = patch.type
+        if (patch.date !== undefined) payload.booking_date = patch.date
+        if (patch.time !== undefined) payload.booking_time = patch.time
+        if (patch.notes !== undefined) payload.notes = patch.notes
+
+        const { error: updateError } = await supabase.from('bookings').update(payload).eq('id', id)
+        if (updateError) throw updateError
+        refresh()
       },
-      addLandingPage(page) {
-        const next = {
-          ...page,
-          id: uid('lp'),
+      async addLandingPage(page) {
+        const { data, error: insertError } = await supabase
+          .from('landing_pages')
+          .insert({
+            name: page.name,
+            slug: page.slug,
+            campaign: page.campaign || '',
+            status: page.status || 'Draft',
+            visitors: 0,
+            leads: 0,
+          })
+          .select('*')
+          .single()
+        if (insertError) throw insertError
+        refresh()
+        return mapLandingPage(data)
+      },
+      async updateLandingPage(id, patch) {
+        const payload = { updated_at: new Date().toISOString() }
+        if (patch.name !== undefined) payload.name = patch.name
+        if (patch.slug !== undefined) payload.slug = patch.slug
+        if (patch.campaign !== undefined) payload.campaign = patch.campaign
+        if (patch.status !== undefined) payload.status = patch.status
+        if (patch.visitors !== undefined) payload.visitors = patch.visitors
+        if (patch.leads !== undefined) payload.leads = patch.leads
+
+        const { error: updateError } = await supabase.from('landing_pages').update(payload).eq('id', id)
+        if (updateError) throw updateError
+        refresh()
+      },
+      async duplicateLandingPage(id) {
+        const source = landingPages.find((p) => p.id === id)
+        if (!source) return
+        await supabase.from('landing_pages').insert({
+          name: `${source.name} (Copy)`,
+          slug: `${source.slug}-copy-${Date.now().toString().slice(-4)}`,
+          campaign: source.campaign,
+          status: 'Draft',
           visitors: 0,
           leads: 0,
-          createdAt: new Date().toISOString().slice(0, 10),
-        }
-        setLandingPages((prev) => [next, ...prev])
-        return next
-      },
-      updateLandingPage(id, patch) {
-        setLandingPages((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
-      },
-      duplicateLandingPage(id) {
-        setLandingPages((prev) => {
-          const source = prev.find((p) => p.id === id)
-          if (!source) return prev
-          return [
-            {
-              ...source,
-              id: uid('lp'),
-              name: `${source.name} (Copy)`,
-              slug: `${source.slug}-copy`,
-              status: 'Draft',
-              visitors: 0,
-              leads: 0,
-              createdAt: new Date().toISOString().slice(0, 10),
-            },
-            ...prev,
-          ]
         })
+        refresh()
       },
-      addProduct(product) {
-        const next = { ...product, id: uid('p'), sales: 0 }
-        setProducts((prev) => [next, ...prev])
-        return next
+      async addProduct(product) {
+        const { data, error: insertError } = await supabase
+          .from('products')
+          .insert({
+            name: product.name,
+            description: product.description || '',
+            price_ghs: Number(product.priceGhs || 0),
+            payment_link: product.paymentLink || '',
+            image_url: product.image || '',
+            status: product.status || 'Draft',
+            sales_count: 0,
+          })
+          .select('*')
+          .single()
+        if (insertError) throw insertError
+        refresh()
+        return mapProduct(data)
       },
-      updateProduct(id, patch) {
-        setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+      async updateProduct(id, patch) {
+        const payload = { updated_at: new Date().toISOString() }
+        if (patch.name !== undefined) payload.name = patch.name
+        if (patch.description !== undefined) payload.description = patch.description
+        if (patch.priceGhs !== undefined) payload.price_ghs = patch.priceGhs
+        if (patch.paymentLink !== undefined) payload.payment_link = patch.paymentLink
+        if (patch.image !== undefined) payload.image_url = patch.image
+        if (patch.status !== undefined) payload.status = patch.status
+        if (patch.sales !== undefined) payload.sales_count = patch.sales
+
+        const { error: updateError } = await supabase.from('products').update(payload).eq('id', id)
+        if (updateError) throw updateError
+        refresh()
       },
     }),
-    [contacts, bookings, landingPages, products, sales],
+    [
+      contacts,
+      bookings,
+      landingPages,
+      products,
+      sales,
+      emailCampaigns,
+      smsCampaigns,
+      metaAudiences,
+      analytics,
+      loading,
+      error,
+      refresh,
+    ],
   )
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>
