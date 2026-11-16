@@ -29,22 +29,56 @@ const emptyProduct = {
 export default function Products() {
   const { products, addProduct, updateProduct, loading, error } = useAdminData()
   const [open, setOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyProduct)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+
+  function openCreate() {
+    setEditingId(null)
+    setForm(emptyProduct)
+    setFormError('')
+    setOpen(true)
+  }
+
+  function openEdit(product) {
+    setEditingId(product.id)
+    setForm({
+      name: product.name || '',
+      description: product.description || '',
+      priceGhs: String(product.priceGhs ?? ''),
+      paymentLink: product.paymentLink || '',
+      status: product.status || 'Draft',
+    })
+    setFormError('')
+    setOpen(true)
+  }
+
+  function closeModal() {
+    setOpen(false)
+    setEditingId(null)
+    setForm(emptyProduct)
+    setFormError('')
+  }
 
   async function saveProduct(e) {
     e.preventDefault()
     setFormError('')
     setSaving(true)
     try {
-      await addProduct({
-        ...form,
+      const payload = {
+        name: form.name,
+        description: form.description,
         priceGhs: Number(form.priceGhs || 0),
-        image: '',
-      })
-      setForm(emptyProduct)
-      setOpen(false)
+        paymentLink: form.paymentLink,
+        status: form.status,
+      }
+      if (editingId) {
+        await updateProduct(editingId, payload)
+      } else {
+        await addProduct({ ...payload, image: '' })
+      }
+      closeModal()
     } catch (err) {
       setFormError(err.message || 'Could not save product')
     } finally {
@@ -58,7 +92,7 @@ export default function Products() {
         title="Products"
         description="Digital products priced in Ghana cedis (GHS)."
         actions={
-          <PrimaryButton onClick={() => setOpen(true)}>
+          <PrimaryButton onClick={openCreate}>
             <span className="inline-flex items-center gap-2">
               <Plus size={16} /> Add product
             </span>
@@ -74,7 +108,7 @@ export default function Products() {
           <EmptyState
             title="No products yet"
             description="Add your first digital product."
-            action={<PrimaryButton onClick={() => setOpen(true)}>Add product</PrimaryButton>}
+            action={<PrimaryButton onClick={openCreate}>Add product</PrimaryButton>}
           />
         }
       >
@@ -89,22 +123,29 @@ export default function Products() {
               <p className="mt-4 font-display text-xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
               <p className="mt-1 text-xs text-muted">{product.sales} sales</p>
               <p className="mt-3 truncate text-xs text-muted">{product.paymentLink || 'No payment link yet'}</p>
-              <SecondaryButton
-                className="mt-4"
-                onClick={() =>
-                  updateProduct(product.id, {
-                    status: product.status === 'Published' ? 'Draft' : 'Published',
-                  })
-                }
-              >
-                {product.status === 'Published' ? 'Unpublish' : 'Publish'}
-              </SecondaryButton>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <SecondaryButton onClick={() => openEdit(product)}>Edit</SecondaryButton>
+                <SecondaryButton
+                  onClick={() =>
+                    updateProduct(product.id, {
+                      status: product.status === 'Published' ? 'Draft' : 'Published',
+                    })
+                  }
+                >
+                  {product.status === 'Published' ? 'Unpublish' : 'Publish'}
+                </SecondaryButton>
+              </div>
             </Panel>
           ))}
         </div>
       </DataState>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Add digital product" wide>
+      <Modal
+        open={open}
+        onClose={closeModal}
+        title={editingId ? 'Edit digital product' : 'Add digital product'}
+        wide
+      >
         <form className="grid gap-3" onSubmit={saveProduct}>
           <Field label="Product name">
             <TextInput required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -122,7 +163,11 @@ export default function Products() {
             />
           </Field>
           <Field label="Payment link">
-            <TextInput value={form.paymentLink} onChange={(e) => setForm({ ...form, paymentLink: e.target.value })} />
+            <TextInput
+              value={form.paymentLink}
+              onChange={(e) => setForm({ ...form, paymentLink: e.target.value })}
+              placeholder="https://..."
+            />
           </Field>
           <Field label="Status">
             <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
@@ -132,11 +177,11 @@ export default function Products() {
           </Field>
           {formError && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
           <div className="flex justify-end gap-2">
-            <SecondaryButton type="button" onClick={() => setOpen(false)}>
+            <SecondaryButton type="button" onClick={closeModal}>
               Cancel
             </SecondaryButton>
             <PrimaryButton type="submit" disabled={saving}>
-              {saving ? 'Saving…' : 'Save product'}
+              {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save product'}
             </PrimaryButton>
           </div>
         </form>
