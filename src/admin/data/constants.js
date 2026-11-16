@@ -27,7 +27,7 @@ export const INTEGRATIONS = [
 
 export const WEBSITE_PAGES = [
   { id: 'w1', name: 'Home', path: '/', status: 'Live' },
-  { id: 'w2', name: 'Digital Products', path: '/digital-products', status: 'Coming soon' },
+  { id: 'w2', name: 'Digital Products', path: '/digital-products', status: 'Live' },
   { id: 'w3', name: 'Admin Login', path: '/admin/login', status: 'Private' },
 ]
 
