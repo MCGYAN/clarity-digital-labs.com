@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { mapProduct } from '../admin/lib/mappers'
 import { formatGhs } from '../admin/data/constants'
+import PayNowButton from '../components/PayNowButton'
 import { site } from '../config'
 import { supabase } from '../lib/supabase'
 
@@ -85,14 +86,7 @@ export default function DigitalProducts() {
                 <p className="mt-3 text-sm leading-relaxed text-muted">{product.description || 'No description yet.'}</p>
                 <p className="mt-5 font-display text-2xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
                 <div className="mt-6">
-                  <a
-                    href={product.paymentLink || site.whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-primary btn-stack-mobile"
-                  >
-                    Pay now · {formatGhs(product.priceGhs)}
-                  </a>
+                  <PayNowButton product={product} />
                 </div>
               </article>
             ))}

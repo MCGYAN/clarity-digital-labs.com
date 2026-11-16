@@ -21,7 +21,12 @@ export const INTEGRATIONS = [
   { id: 'i1', name: 'Email provider', description: 'Send broadcasts and automations', status: 'Not connected' },
   { id: 'i2', name: 'SMS provider', description: 'Deliver SMS campaigns and reminders', status: 'Not connected' },
   { id: 'i3', name: 'Meta', description: 'Custom audiences and ad sync', status: 'Not connected' },
-  { id: 'i4', name: 'Payments', description: 'GHS checkout and payment links', status: 'Not connected' },
+  {
+    id: 'i4',
+    name: 'Moolre Payments',
+    description: 'GHS checkout for Pay now on digital products',
+    status: 'Not connected',
+  },
   { id: 'i5', name: 'Supabase', description: 'Auth and database', status: 'Connected' },
 ]
 

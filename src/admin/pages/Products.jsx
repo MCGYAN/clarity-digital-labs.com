@@ -17,12 +17,12 @@ import {
 import DataState from '../components/DataState'
 import { useAdminData } from '../context/AdminDataContext'
 import { formatGhs } from '../data/constants'
+import { isMoolreConfigured } from '../../lib/moolre'
 
 const emptyProduct = {
   name: '',
   description: '',
   priceGhs: '',
-  paymentLink: '',
   status: 'Draft',
 }
 
@@ -33,6 +33,7 @@ export default function Products() {
   const [form, setForm] = useState(emptyProduct)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const moolreReady = isMoolreConfigured()
 
   function openCreate() {
     setEditingId(null)
@@ -47,7 +48,6 @@ export default function Products() {
       name: product.name || '',
       description: product.description || '',
       priceGhs: String(product.priceGhs ?? ''),
-      paymentLink: product.paymentLink || '',
       status: product.status || 'Draft',
     })
     setFormError('')
@@ -70,13 +70,12 @@ export default function Products() {
         name: form.name,
         description: form.description,
         priceGhs: Number(form.priceGhs || 0),
-        paymentLink: form.paymentLink,
         status: form.status,
       }
       if (editingId) {
         await updateProduct(editingId, payload)
       } else {
-        await addProduct({ ...payload, image: '' })
+        await addProduct({ ...payload, image: '', paymentLink: '' })
       }
       closeModal()
     } catch (err) {
@@ -90,7 +89,7 @@ export default function Products() {
     <div>
       <PageHeader
         title="Products"
-        description="Digital products priced in Ghana cedis (GHS)."
+        description="Digital products priced in Ghana cedis (GHS). Pay now uses Moolre checkout with each product price."
         actions={
           <PrimaryButton onClick={openCreate}>
             <span className="inline-flex items-center gap-2">
@@ -99,6 +98,18 @@ export default function Products() {
           </PrimaryButton>
         }
       />
+
+      <p
+        className={`mb-4 rounded-2xl px-4 py-3 text-sm ${
+          moolreReady
+            ? 'border border-emerald-200 bg-emerald-50 text-emerald-900'
+            : 'border border-amber-200 bg-amber-50 text-amber-900'
+        }`}
+      >
+        {moolreReady
+          ? 'Moolre is connected. Buyers can check out with Pay now.'
+          : 'Payment system not installed yet. Add Moolre keys in Vercel/.env, then redeploy.'}
+      </p>
 
       <DataState
         loading={loading}
@@ -122,7 +133,7 @@ export default function Products() {
               <p className="mt-2 text-sm leading-relaxed text-muted">{product.description}</p>
               <p className="mt-4 font-display text-xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
               <p className="mt-1 text-xs text-muted">{product.sales} sales</p>
-              <p className="mt-3 truncate text-xs text-muted">{product.paymentLink || 'No payment link yet'}</p>
+              <p className="mt-3 text-xs text-muted">Checkout: Moolre · Pay now · {formatGhs(product.priceGhs)}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <SecondaryButton onClick={() => openEdit(product)}>Edit</SecondaryButton>
                 <SecondaryButton
@@ -162,13 +173,9 @@ export default function Products() {
               onChange={(e) => setForm({ ...form, priceGhs: e.target.value })}
             />
           </Field>
-          <Field label="Payment link">
-            <TextInput
-              value={form.paymentLink}
-              onChange={(e) => setForm({ ...form, paymentLink: e.target.value })}
-              placeholder="https://..."
-            />
-          </Field>
+          <p className="text-xs text-muted">
+            This price is sent to Moolre when someone clicks Pay now. Change the price here and checkout updates automatically.
+          </p>
           <Field label="Status">
             <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               <option>Draft</option>
