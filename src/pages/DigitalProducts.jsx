@@ -85,25 +85,14 @@ export default function DigitalProducts() {
                 <p className="mt-3 text-sm leading-relaxed text-muted">{product.description || 'No description yet.'}</p>
                 <p className="mt-5 font-display text-2xl font-bold text-deep">{formatGhs(product.priceGhs)}</p>
                 <div className="mt-6">
-                  {product.paymentLink ? (
-                    <a
-                      href={product.paymentLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-primary btn-stack-mobile"
-                    >
-                      Buy now
-                    </a>
-                  ) : (
-                    <a
-                      href={site.whatsappUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-primary btn-stack-mobile"
-                    >
-                      Ask on WhatsApp
-                    </a>
-                  )}
+                  <a
+                    href={product.paymentLink || site.whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-primary btn-stack-mobile"
+                  >
+                    Pay now · {formatGhs(product.priceGhs)}
+                  </a>
                 </div>
               </article>
             ))}
